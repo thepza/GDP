@@ -1,0 +1,38 @@
+from flask import Flask, render_template
+import requests
+from bs4 import BeautifulSoup
+
+# Create Flask app
+app = Flask(__name__)
+
+# Define route to display GDP data on webpage
+@app.route('/')
+def index():
+    # URL of World Bank GDP data
+    url = 'https://data.worldbank.org/indicator/NY.GDP.MKTP.CD'
+
+    # Send a GET request to the website and get the HTML response
+    response = requests.get(url)
+
+    # Parse the HTML response using BeautifulSoup
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    # Find the table that contains the GDP data
+    table = soup.find('table', {'class': 'indicators-table'})
+
+    # Extract the table headers
+    headers = [th.text.strip() for th in table.find_all('th')][1:]
+
+    # Extract the GDP data for each country
+    gdp_data = {}
+    for tr in table.find_all('tr')[1:]:
+        tds = tr.find_all('td')
+        country_name = tds[0].text.strip()
+        gdp_values = [float(td.text.strip().replace(',', '')) if td.text.strip() != '..' else None for td in tds[1:]]
+        gdp_data[country_name] = dict(zip(headers, gdp_values))
+
+    return render_template('gdp.html', gdp_data=gdp_data)
+
+# Run the app
+if __name__ == '__main__':
+    app.run(debug=True)
